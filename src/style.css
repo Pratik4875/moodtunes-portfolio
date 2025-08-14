@@ -3,15 +3,74 @@
 @tailwind utilities;
 
 body {
-  font-family: 'Inter', sans-serif;
-  background-color: #0c132c;
-  background-image: radial-gradient(at 27% 37%, hsla(215, 98%, 61%, 0.4) 0px, transparent 50%),
-                    radial-gradient(at 97% 21%, hsla(125, 98%, 72%, 0.4) 0px, transparent 50%),
-                    radial-gradient(at 52% 99%, hsla(355, 98%, 61%, 0.4) 0px, transparent 50%),
-                    radial-gradient(at 10% 29%, hsla(256, 96%, 61%, 0.4) 0px, transparent 50%),
-                    radial-gradient(at 97% 96%, hsla(38, 60%, 74%, 0.4) 0px, transparent 50%),
-                    radial-gradient(at 33% 50%, hsla(222, 67%, 73%, 0.4) 0px, transparent 50%),
-                    radial-gradient(at 79% 53%, hsla(343, 68%, 79%, 0.4) 0px, transparent 50%);
-  background-attachment: fixed;
-  color: white;
+    font-family: 'Inter', sans-serif;
+    background-color: #020617; /* A very dark blue */
+}
+
+/* NEW: Styles for the new font and logo animation */
+.logo-font {
+    font-family: 'Exo 2', sans-serif;
+    animation: float-text 6s ease-in-out infinite;
+}
+
+@keyframes float-text {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+    100% { transform: translateY(0px); }
+}
+
+
+.nav-link {
+    @apply relative py-2 text-gray-300 hover:text-white transition-colors duration-300;
+}
+
+.nav-link::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-0 h-0.5 bg-blue-500 transition-all duration-300;
+}
+
+.nav-link:hover::after {
+    @apply w-full;
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 251, 0.1);
+    @apply rounded-2xl;
+}
+
+.animated-gradient-text {
+    background: linear-gradient(to right, #3b82f6, #8b5cf6, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradient-animation 5s ease infinite;
+    background-size: 200% 200%;
+}
+
+@keyframes gradient-animation {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    border-bottom-color: #3b82f6;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+}
+
+@keyframes rotation {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #020617; /* A very dark blue */
+    }
 }

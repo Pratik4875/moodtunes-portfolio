@@ -1,19 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MoodTunes - AI Music for Your Emotions</title>
-    <!-- Google Fonts: Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-  </head>
-  <body>
-    <div id="app"></div>
+    <title>Pratik's Portfolio - MoodTunes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- NEW FONT: Exo 2 for a modern, techy feel -->
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/style.css">
+</head>
+<body class="bg-gray-900 text-white">
+
+    <!-- 3D Background Canvas -->
+    <canvas id="bg-canvas" class="fixed top-0 left-0 w-full h-full z-0"></canvas>
+
+    <!-- Main Container -->
+    <div id="app-container" class="relative z-10">
+        <header class="p-4 sm:p-6">
+            <nav class="max-w-7xl mx-auto flex justify-between items-center">
+                <a href="#" class="text-2xl font-black tracking-wider logo-font" data-page="home">PRATIK</a>
+                <div class="hidden md:flex items-center space-x-8 text-lg">
+                    <a href="#" class="nav-link" data-page="home">Home</a>
+                    <a href="#" class="nav-link" data-page="app">MoodTunes App</a>
+                    <a href="#" class="nav-link" data-page="about">About</a>
+                    <a href="#" class="nav-link" data-page="contact">Contact</a>
+                </div>
+            </nav>
+        </header>
+
+        <main id="page-content" class="p-4 sm:p-8">
+            <!-- Content will be loaded here by JavaScript -->
+        </main>
+    </div>
+
+    <!-- Three.js for 3D animation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Main script -->
     <script type="module" src="/src/main.ts"></script>
-  </body>
+</body>
 </html>
