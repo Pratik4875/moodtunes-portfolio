@@ -2,6 +2,6 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   server: {
-    host: '127.0.0.1',
+    host: 'https://emo-music-e4276.web.app/',
   },
 })
