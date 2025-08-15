@@ -281,7 +281,7 @@ async function initializeAppLogic() {
             response_type: 'code',
             client_id: "7bee23d2ac4c43ffac4005b45f15cb50",
             scope,
-            redirect_uri: 'http://127.0.0.1:5173',
+            redirect_uri: 'https://emo-music-e4276.web.app/',
             state: randomString
         };
         authUrl.search = new URLSearchParams(params).toString();
@@ -300,7 +300,7 @@ async function initializeAppLogic() {
             body: new URLSearchParams({
                 grant_type: "authorization_code",
                 code,
-                redirect_uri: 'http://127.0.0.1:5173',
+                redirect_uri: 'https://emo-music-e4276.web.app/',
             }),
         });
         const data = await response.json();
