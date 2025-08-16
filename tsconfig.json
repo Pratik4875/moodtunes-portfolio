@@ -5,16 +5,15 @@
     "module": "ESNext",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
+    "strict": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "esModuleInterop": true,
     "noEmit": true,
-    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "skipLibCheck": true,
-    "noImplicitAny": false
+    "skipLibCheck": true
   },
   "include": ["src"]
 }
