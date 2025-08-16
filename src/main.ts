@@ -147,7 +147,7 @@ function cleanupAppLogic() {
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
     }
-    isAppInitialized = false; // Allow re-initialization
+    isAppInitialized = false; 
     console.log("App logic cleaned up.");
 }
 
@@ -194,6 +194,11 @@ async function initializeAppLogic() {
     let isDetecting = false;
     let currentEmotion: string | null = null;
     let spotifyToken: string | null = null;
+
+    // **FIX:** Dynamically set the redirect URI based on the environment
+    const redirectUri = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://127.0.0.1:5173'
+        : 'https://emo-music-e4276.web.app';
 
     type Emotion = 'angry' | 'happy' | 'sad' | 'neutral' | 'surprised' | 'fearful' | 'disgusted';
     const emotionMap: { [key in Emotion]: { emoji: string; color: string; prompt: string } } = {
@@ -296,7 +301,7 @@ async function initializeAppLogic() {
             response_type: 'code',
             client_id: "7bee23d2ac4c43ffac4005b45f15cb50",
             scope,
-            redirect_uri: 'http://127.0.0.1:5173',
+            redirect_uri: redirectUri,
             state: randomString
         };
         authUrl.search = new URLSearchParams(params).toString();
@@ -315,7 +320,7 @@ async function initializeAppLogic() {
             body: new URLSearchParams({
                 grant_type: "authorization_code",
                 code,
-                redirect_uri: 'http://127.0.0.1:5173',
+                redirect_uri: redirectUri,
             }),
         });
         const data = await response.json();
@@ -323,6 +328,7 @@ async function initializeAppLogic() {
     }
 
     async function getSongForEmotion(prompt: string) {
+        if (!spotifyToken) return;
         musicDisplay.innerHTML = `<p class="text-gray-400">Asking AI for songs...</p>`;
         const foundTrack = await findSongForEmotion(prompt, spotifyToken);
         if (foundTrack) {
@@ -333,24 +339,11 @@ async function initializeAppLogic() {
     }
 
     function displaySong(track: any) {
-        let buttons = '';
-        if (track.source === 'spotify') {
-            buttons = `<a href="${track.external_urls.spotify}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg inline-block transition duration-300">Listen on Spotify</a>`;
-        } else if (track.source === 'youtube') {
-            buttons = `<a href="https://www.youtube.com/watch?v=${track.id.videoId}" target="_blank" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg inline-block transition duration-300">Watch on YouTube</a>`;
-        }
-        
-        const imageUrl = track.source === 'spotify' ? track.album.images[0].url : track.snippet.thumbnails.high.url;
-        const title = track.source === 'spotify' ? track.name : track.snippet.title;
-        const artist = track.source === 'spotify' ? track.artists[0].name : track.snippet.channelTitle;
-
         musicDisplay.innerHTML = `
-            <img src="${imageUrl}" alt="${title}" class="w-32 h-32 rounded-lg mx-auto mb-4 shadow-lg">
-            <p class="font-bold text-lg">${title}</p>
-            <p class="text-gray-300 mb-4">${artist}</p>
-            <div class="flex gap-4 justify-center">
-                ${buttons}
-            </div>
+            <img src="${track.album.images[0].url}" alt="${track.name}" class="w-32 h-32 rounded-lg mx-auto mb-4 shadow-lg">
+            <p class="font-bold text-lg">${track.name}</p>
+            <p class="text-gray-300 mb-4">${track.artists[0].name}</p>
+            <a href="${track.external_urls.spotify}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg inline-block transition duration-300">Listen on Spotify</a>
         `;
     }
 
@@ -377,6 +370,7 @@ async function initializeAppLogic() {
                 if (spotifyToken) {
                     spotifyConnectBtn.textContent = "Spotify Connected";
                     spotifyConnectBtn.disabled = true;
+                    startBtn.disabled = false;
                 } else {
                     spotifyConnectBtn.addEventListener('click', redirectToSpotifyLogin);
                 }
