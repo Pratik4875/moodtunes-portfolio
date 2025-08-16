@@ -1,5 +1,6 @@
 // --- API Keys ---
 const geminiApiKey = "AIzaSyBvjsE7nitKmbjyGE69K3g_meK8Akonbyw";
+const youtubeApiKey = "AIzaSyCjn0k2v7ZhSVd42rt-ADuAEgs_q6_bRSM";
 
 // --- Helper Functions ---
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -34,15 +35,9 @@ async function fetchWithRetry(payload: object) {
     }
 }
 
-// --- NEW: Function to get a structured JSON response from Gemini ---
-async function getGeminiSongSuggestions(prompt: string): Promise<{ artist: string, songTitle: string }[]> {
-    if (geminiApiKey === "AIzaSyBvjsE7nitKmbjyGE69K3g_meK8Akonbyw") {
-        console.error("Gemini API key not set.");
-        return [];
-    }
-
-    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    const userLocation = "India";
+async function getGeminiSongSuggestions(prompt: string): Promise<string[]> {
+    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+    const userLocation = "India"; 
 
     const enhancedPrompt = `
         You are an expert music recommender.
@@ -52,46 +47,27 @@ async function getGeminiSongSuggestions(prompt: string): Promise<{ artist: strin
     `;
 
     const payload = {
-        contents: [{ parts: [{ text: enhancedPrompt }] }],
-        generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: "OBJECT",
-                properties: {
-                    "songs": {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                "artist": { "type": "STRING" },
-                                "songTitle": { "type": "STRING" }
-                            },
-                            required: ["artist", "songTitle"]
-                        }
-                    }
-                }
-            }
-        }
+        contents: [{
+            parts: [{ text: `${enhancedPrompt} Respond with a numbered list. For each item, provide only the artist and song title in the format: Artist - Song Title.` }]
+        }]
     };
 
     try {
         const data = await fetchWithRetry(payload);
         if (data && data.candidates && data.candidates.length > 0) {
-            const jsonText = data.candidates[0].content.parts[0].text;
-            const suggestions = JSON.parse(jsonText).songs;
-            console.log("Structured Gemini Suggestions:", suggestions);
-            return suggestions || [];
+            const text = data.candidates[0].content.parts[0].text.trim();
+            const suggestions = text.split('\n').map(line => line.replace(/^\d+\.\s*/, '').trim()).filter(Boolean);
+            console.log("Context-Aware Gemini Suggestions:", suggestions);
+            return suggestions;
         }
         return [];
     } catch (error) {
-        console.error("Error fetching structured JSON from Gemini API:", error);
+        console.error("Error fetching from Gemini API:", error);
         return [];
     }
 }
 
-async function searchSpotify(artist: string, songTitle: string, spotifyToken: string) {
-    // Use Spotify's advanced search syntax for better accuracy
-    const query = `track:${songTitle} artist:${artist}`;
+async function searchSpotify(query: string, spotifyToken: string) {
     const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=1`, {
         headers: {
             Authorization: `Bearer ${spotifyToken}`,
@@ -102,18 +78,24 @@ async function searchSpotify(artist: string, songTitle: string, spotifyToken: st
     return data.tracks.items;
 }
 
-// --- NEW: Function to get the user's liked songs ---
+// --- NEW: Function to search YouTube ---
+async function searchYouTube(query: string) {
+    const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=1&key=${youtubeApiKey}`);
+    const data = await response.json();
+    console.log(`YouTube results for "${query}":`, data.items);
+    return data.items;
+}
+
 async function getUsersLikedSongs(spotifyToken: string): Promise<any[]> {
     console.log("Fetching user's liked songs as a fallback...");
     try {
-        const response = await fetch(`https://api.spotify.com/v1/me/tracks?limit=20`, { // Get up to 20 recent songs
+        const response = await fetch(`https://api.spotify.com/v1/me/tracks?limit=20`, {
             headers: {
                 Authorization: `Bearer ${spotifyToken}`,
             },
         });
         const data = await response.json();
         if (data.items && data.items.length > 0) {
-            console.log("Found liked songs:", data.items.map((item: any) => item.track.name));
             return data.items.map((item: any) => item.track);
         }
         return [];
@@ -124,28 +106,45 @@ async function getUsersLikedSongs(spotifyToken: string): Promise<any[]> {
 }
 
 // --- Main Exported Function ---
-export async function findSongForEmotion(prompt: string, spotifyToken: string): Promise<any | null> {
+export async function findSongForEmotion(prompt: string, spotifyToken: string | null): Promise<any | null> {
     console.log("Finding song for base prompt:", prompt);
     const songSuggestions = await getGeminiSongSuggestions(prompt);
-    
-    if (songSuggestions && songSuggestions.length > 0) {
-        for (const suggestion of songSuggestions) {
-            console.log("Searching Spotify for:", suggestion);
-            const tracks = await searchSpotify(suggestion.artist, suggestion.songTitle, spotifyToken);
-            if (tracks.length > 0) {
-                return tracks[0]; // Return the first successful match
+    if (songSuggestions.length === 0) {
+        console.log("AI could not suggest any songs.");
+        // If AI fails and user is logged in, try liked songs immediately
+        if (spotifyToken) {
+            const likedSongs = await getUsersLikedSongs(spotifyToken);
+            if (likedSongs.length > 0) {
+                return { ...likedSongs[Math.floor(Math.random() * likedSongs.length)], source: 'spotify' };
             }
+        }
+        return null;
+    }
+
+    // If user is logged into Spotify, try that first
+    if (spotifyToken) {
+        for (const suggestion of songSuggestions) {
+            const tracks = await searchSpotify(suggestion, spotifyToken);
+            if (tracks.length > 0) {
+                return { ...tracks[0], source: 'spotify' }; // Return with source
+            }
+        }
+        // Fallback to liked songs if AI suggestions fail on Spotify
+        const likedSongs = await getUsersLikedSongs(spotifyToken);
+        if (likedSongs.length > 0) {
+            return { ...likedSongs[Math.floor(Math.random() * likedSongs.length)], source: 'spotify' };
+        }
+    }
+
+    // If Spotify fails or user is not logged in, search YouTube
+    console.log("Searching YouTube for AI suggestions...");
+    for (const suggestion of songSuggestions) {
+        const videos = await searchYouTube(suggestion);
+        if (videos.length > 0) {
+            return { ...videos[0], source: 'youtube' }; // Return with source
         }
     }
     
-    // --- Final fallback to the user's library ---
-    console.log("Could not find any of the AI's suggestions on Spotify. Trying user's liked songs.");
-    const likedSongs = await getUsersLikedSongs(spotifyToken);
-    if (likedSongs.length > 0) {
-        // Shuffle and pick a random song from the liked songs
-        const randomSong = likedSongs[Math.floor(Math.random() * likedSongs.length)];
-        return randomSong;
-    }
-
-    return null; // Return null only if everything fails
+    console.log("Could not find any songs on Spotify or YouTube.");
+    return null;
 }

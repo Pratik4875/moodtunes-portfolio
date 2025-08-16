@@ -195,7 +195,6 @@ async function initializeAppLogic() {
     let currentEmotion: string | null = null;
     let spotifyToken: string | null = null;
 
-    // **FIX:** Define a specific type for emotions to ensure type safety.
     type Emotion = 'angry' | 'happy' | 'sad' | 'neutral' | 'surprised' | 'fearful' | 'disgusted';
     const emotionMap: { [key in Emotion]: { emoji: string; color: string; prompt: string } } = {
         angry: { emoji: '😠', color: 'text-red-400', prompt: 'List 5 popular, high-energy songs from the last 20 years for someone feeling angry.' },
@@ -245,7 +244,6 @@ async function initializeAppLogic() {
             if (!isDetecting || !video.srcObject) return;
             const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
             if (detections) {
-                // **FIX:** Type-safe way to find the primary emotion.
                 const expressions = detections.expressions;
                 let primaryEmotion: Emotion = 'neutral';
                 let maxConfidence = 0;
@@ -325,7 +323,6 @@ async function initializeAppLogic() {
     }
 
     async function getSongForEmotion(prompt: string) {
-        if (!spotifyToken) return;
         musicDisplay.innerHTML = `<p class="text-gray-400">Asking AI for songs...</p>`;
         const foundTrack = await findSongForEmotion(prompt, spotifyToken);
         if (foundTrack) {
@@ -336,11 +333,24 @@ async function initializeAppLogic() {
     }
 
     function displaySong(track: any) {
+        let buttons = '';
+        if (track.source === 'spotify') {
+            buttons = `<a href="${track.external_urls.spotify}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg inline-block transition duration-300">Listen on Spotify</a>`;
+        } else if (track.source === 'youtube') {
+            buttons = `<a href="https://www.youtube.com/watch?v=${track.id.videoId}" target="_blank" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg inline-block transition duration-300">Watch on YouTube</a>`;
+        }
+        
+        const imageUrl = track.source === 'spotify' ? track.album.images[0].url : track.snippet.thumbnails.high.url;
+        const title = track.source === 'spotify' ? track.name : track.snippet.title;
+        const artist = track.source === 'spotify' ? track.artists[0].name : track.snippet.channelTitle;
+
         musicDisplay.innerHTML = `
-            <img src="${track.album.images[0].url}" alt="${track.name}" class="w-32 h-32 rounded-lg mx-auto mb-4 shadow-lg">
-            <p class="font-bold text-lg">${track.name}</p>
-            <p class="text-gray-300 mb-4">${track.artists[0].name}</p>
-            <a href="${track.external_urls.spotify}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg inline-block transition duration-300">Listen on Spotify</a>
+            <img src="${imageUrl}" alt="${title}" class="w-32 h-32 rounded-lg mx-auto mb-4 shadow-lg">
+            <p class="font-bold text-lg">${title}</p>
+            <p class="text-gray-300 mb-4">${artist}</p>
+            <div class="flex gap-4 justify-center">
+                ${buttons}
+            </div>
         `;
     }
 
@@ -354,7 +364,7 @@ async function initializeAppLogic() {
                 projectId: "emo-music-e4276",
                 storageBucket: "emo-music-e4276.appspot.com",
                 messagingSenderId: "871548316848",
-                appId: "1:871548316848:web:bada37462a5c93fc241f75",
+                appId: "1:871548316848:web:bada7462a5c93fc241f75",
                 measurementId: "G-WPEF2VP0W8"
             });
             const auth = getAuth(firebaseApp);
@@ -367,7 +377,6 @@ async function initializeAppLogic() {
                 if (spotifyToken) {
                     spotifyConnectBtn.textContent = "Spotify Connected";
                     spotifyConnectBtn.disabled = true;
-                    startBtn.disabled = false;
                 } else {
                     spotifyConnectBtn.addEventListener('click', redirectToSpotifyLogin);
                 }
