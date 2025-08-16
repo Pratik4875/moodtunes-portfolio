@@ -92,9 +92,8 @@ const pages = {
 };
 
 // --- Global State ---
+let isAppInitialized = false;
 let currentPage = '';
-let detectionInterval: number | undefined;
-let videoStream: MediaStream | null = null;
 
 // --- 3D Background Animation ---
 const scene = new THREE.Scene();
@@ -134,8 +133,10 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
 });
 
-// --- Page Navigation & Cleanup ---
+// --- Page Navigation ---
 const pageContent = document.getElementById('page-content')!;
+let detectionInterval: number | undefined;
+let videoStream: MediaStream | null = null;
 
 function cleanupAppLogic() {
     if (detectionInterval) {
@@ -146,6 +147,7 @@ function cleanupAppLogic() {
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
     }
+    isAppInitialized = false; // Allow re-initialization
     console.log("App logic cleaned up.");
 }
 
@@ -176,6 +178,9 @@ document.body.addEventListener('click', (e) => {
 
 // --- MoodTunes App Logic ---
 async function initializeAppLogic() {
+    if (isAppInitialized) return;
+    isAppInitialized = true;
+
     const video = document.getElementById('video') as HTMLVideoElement;
     const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
     const stopBtn = document.getElementById('stop-btn') as HTMLButtonElement;
@@ -190,7 +195,9 @@ async function initializeAppLogic() {
     let currentEmotion: string | null = null;
     let spotifyToken: string | null = null;
 
-    const emotionMap: { [key: string]: { emoji: string; color: string; prompt: string } } = {
+    // **FIX:** Define a specific type for emotions to ensure type safety.
+    type Emotion = 'angry' | 'happy' | 'sad' | 'neutral' | 'surprised' | 'fearful' | 'disgusted';
+    const emotionMap: { [key in Emotion]: { emoji: string; color: string; prompt: string } } = {
         angry: { emoji: '😠', color: 'text-red-400', prompt: 'List 5 popular, high-energy songs from the last 20 years for someone feeling angry.' },
         happy: { emoji: '😊', color: 'text-yellow-400', prompt: 'List 5 iconic, universally happy pop songs from the 2010s.' },
         sad: { emoji: '😢', color: 'text-blue-400', prompt: 'List 5 famous, melancholic, and emotional acoustic songs for a moment of sadness.' },
@@ -238,17 +245,27 @@ async function initializeAppLogic() {
             if (!isDetecting || !video.srcObject) return;
             const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
             if (detections) {
-                const primaryEmotion = Object.keys(detections.expressions).reduce((a, b) => detections.expressions[a] > detections.expressions[b] ? a : b);
+                // **FIX:** Type-safe way to find the primary emotion.
+                const expressions = detections.expressions;
+                let primaryEmotion: Emotion = 'neutral';
+                let maxConfidence = 0;
+                for (const [emotion, confidence] of Object.entries(expressions)) {
+                    if (confidence > maxConfidence) {
+                        maxConfidence = confidence;
+                        primaryEmotion = emotion as Emotion;
+                    }
+                }
+
                 if (primaryEmotion !== currentEmotion) {
                     currentEmotion = primaryEmotion;
                     const { emoji, color, prompt } = emotionMap[primaryEmotion] || emotionMap.neutral;
                     emotionDisplay.innerHTML = `
                         <div class="text-7xl mb-2">${emoji}</div>
                         <p class="text-3xl font-bold capitalize ${color}">${primaryEmotion}</p>
-                        <p class="text-sm text-gray-300">Confidence: ${(detections.expressions[primaryEmotion] * 100).toFixed(1)}%</p>
+                        <p class="text-sm text-gray-300">Confidence: ${(maxConfidence * 100).toFixed(1)}%</p>
                     `;
                     getSongForEmotion(prompt);
-                    saveEmotionToFirebase(db, userId, { emotion: primaryEmotion, confidence: detections.expressions[primaryEmotion] });
+                    saveEmotionToFirebase(db, userId, { emotion: primaryEmotion, confidence: maxConfidence });
                 }
             }
         }, 3000);
@@ -281,7 +298,7 @@ async function initializeAppLogic() {
             response_type: 'code',
             client_id: "7bee23d2ac4c43ffac4005b45f15cb50",
             scope,
-            redirect_uri: 'https://emo-music-e4276.web.app/',
+            redirect_uri: 'http://127.0.0.1:5173',
             state: randomString
         };
         authUrl.search = new URLSearchParams(params).toString();
@@ -300,7 +317,7 @@ async function initializeAppLogic() {
             body: new URLSearchParams({
                 grant_type: "authorization_code",
                 code,
-                redirect_uri: 'https://emo-music-e4276.web.app/',
+                redirect_uri: 'http://127.0.0.1:5173',
             }),
         });
         const data = await response.json();
